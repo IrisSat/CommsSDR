@@ -1,2 +1,4 @@
+Use these commands to add python to the path if there you get module not found errors.
+
 export PYTHONPATH=/usr/local/lib/python3.10/site-packages
 export LD_LIBRARY_PATH=/usr/local/lib
