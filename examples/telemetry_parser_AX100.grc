@@ -1,0 +1,128 @@
+options:
+  parameters:
+    author: Daniel Estevez
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: telemetry_parser
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Telemetry parser component example
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: '48000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [208, 12]
+    rotation: 0
+    state: enabled
+- name: blocks_wavfile_source_0
+  id: blocks_wavfile_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    file: /home/jonathan/gr-satellites/satellite-recordings/tw_1b.wav
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nchan: '1'
+    repeat: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [53, 217]
+    rotation: 0
+    state: enabled
+- name: satellites_ax100_deframer_0
+  id: satellites_ax100_deframer
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mode: '"RS"'
+    options: '""'
+    scrambler: '"CCSDS"'
+    threshold: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [512, 212.0]
+    rotation: 0
+    state: true
+- name: satellites_fsk_demodulator_0
+  id: satellites_fsk_demodulator
+  parameters:
+    affinity: ''
+    alias: ''
+    baudrate: '4800'
+    comment: ''
+    iq: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    options: '""'
+    samp_rate: samp_rate
+    subaudio: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 204.0]
+    rotation: 0
+    state: true
+- name: satellites_telemetry_parser_0
+  id: satellites_telemetry_parser
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    definition: gomx_1
+    file: /home/jonathan/CommsSDR/output/output_telemetry_parser.txt
+    options: '""'
+    output: file
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [784, 204.0]
+    rotation: 0
+    state: true
+
+connections:
+- [blocks_wavfile_source_0, '0', satellites_fsk_demodulator_0, '0']
+- [satellites_ax100_deframer_0, out, satellites_telemetry_parser_0, in]
+- [satellites_fsk_demodulator_0, '0', satellites_ax100_deframer_0, '0']
+
+metadata:
+  file_format: 1

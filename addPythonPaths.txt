@@ -1,0 +1,2 @@
+export PYTHONPATH=/usr/local/lib/python3.10/site-packages
+export LD_LIBRARY_PATH=/usr/local/lib
