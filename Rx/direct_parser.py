@@ -6,9 +6,9 @@
 #
 # GNU Radio Python Flow Graph
 # Title: Not titled yet
-# GNU Radio version: 3.9.4.0
+# GNU Radio version: 3.10.2.0
 
-from distutils.version import StrictVersion
+from packaging.version import Version as StrictVersion
 
 if __name__ == '__main__':
     import ctypes
@@ -25,9 +25,7 @@ from gnuradio import qtgui
 from gnuradio.filter import firdes
 import sip
 from gnuradio import blocks
-import pmt
 from gnuradio import digital
-from gnuradio import filter
 from gnuradio import gr
 from gnuradio.fft import window
 import sys
@@ -35,6 +33,8 @@ import signal
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
+import osmosdr
+import time
 import satellites.components.datasinks
 import satellites.components.deframers
 
@@ -42,7 +42,7 @@ import satellites.components.deframers
 
 from gnuradio import qtgui
 
-class ax25wav_parser(gr.top_block, Qt.QWidget):
+class direct_parser(gr.top_block, Qt.QWidget):
 
     def __init__(self):
         gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
@@ -65,7 +65,7 @@ class ax25wav_parser(gr.top_block, Qt.QWidget):
         self.top_grid_layout = Qt.QGridLayout()
         self.top_layout.addLayout(self.top_grid_layout)
 
-        self.settings = Qt.QSettings("GNU Radio", "ax25wav_parser")
+        self.settings = Qt.QSettings("GNU Radio", "direct_parser")
 
         try:
             if StrictVersion(Qt.qVersion()) < StrictVersion("5.0.0"):
@@ -78,20 +78,18 @@ class ax25wav_parser(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.transition_bw = transition_bw = 1000
         self.samp_rate = samp_rate = 2.4e6
-        self.decimation = decimation = 20
 
         ##################################################
         # Blocks
         ##################################################
-        self.satellites_telemetry_parser_0 = satellites.components.datasinks.telemetry_parser('gomx_1', file = '/home/jonathan/CommsSDR/output/output_AX25.txt', options="")
-        self.satellites_ax25_deframer_0 = satellites.components.deframers.ax25_deframer(g3ruh_scrambler=True, options="")
+        self.satellites_telemetry_parser_0 = satellites.components.datasinks.telemetry_parser('gomx_1', file = '/home/jonathan/CommsSDR/output/output_AX100.txt', options="")
+        self.satellites_ax100_deframer_0 = satellites.components.deframers.ax100_deframer(mode = "ASM", scrambler = "CCSDS", syncword_threshold = 0, options="")
         self.qtgui_waterfall_sink_x_0 = qtgui.waterfall_sink_c(
             1024, #size
             window.WIN_BLACKMAN_hARRIS, #wintype
             0, #fc
-            120000, #bw
+            samp_rate, #bw
             "", #name
             1, #number of inputs
             None # parent
@@ -212,7 +210,21 @@ class ax25wav_parser(gr.top_block, Qt.QWidget):
 
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decimation,  firdes.complex_band_pass(1, samp_rate, -samp_rate/(2*decimation), samp_rate/(2*decimation), transition_bw), 0, samp_rate)
+        self.osmosdr_source_0 = osmosdr.source(
+            args="numchan=" + str(1) + " " + ""
+        )
+        self.osmosdr_source_0.set_time_unknown_pps(osmosdr.time_spec_t())
+        self.osmosdr_source_0.set_sample_rate(samp_rate)
+        self.osmosdr_source_0.set_center_freq(145000000, 0)
+        self.osmosdr_source_0.set_freq_corr(0, 0)
+        self.osmosdr_source_0.set_dc_offset_mode(0, 0)
+        self.osmosdr_source_0.set_iq_balance_mode(0, 0)
+        self.osmosdr_source_0.set_gain_mode(False, 0)
+        self.osmosdr_source_0.set_gain(10, 0)
+        self.osmosdr_source_0.set_if_gain(20, 0)
+        self.osmosdr_source_0.set_bb_gain(20, 0)
+        self.osmosdr_source_0.set_antenna('', 0)
+        self.osmosdr_source_0.set_bandwidth(0, 0)
         self.digital_gfsk_demod_0 = digital.gfsk_demod(
             samples_per_symbol=2,
             sensitivity=1.0,
@@ -225,41 +237,33 @@ class ax25wav_parser(gr.top_block, Qt.QWidget):
         self.blocks_uchar_to_float_0 = blocks.uchar_to_float()
         self.blocks_throttle_0 = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate,True)
         self.blocks_message_debug_0 = blocks.message_debug(True)
-        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_gr_complex*1, '/home/jonathan/CommsSDR/output/recordingAX25.wav', True, 0, 0)
-        self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
-
+        self.blocks_file_sink_1 = blocks.file_sink(gr.sizeof_gr_complex*1, '/home/jonathan/CommsSDR/output/RecordingIris1.wav', False)
+        self.blocks_file_sink_1.set_unbuffered(False)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.msg_connect((self.satellites_ax25_deframer_0, 'out'), (self.blocks_message_debug_0, 'print'))
-        self.msg_connect((self.satellites_ax25_deframer_0, 'out'), (self.blocks_message_debug_0, 'print_pdu'))
-        self.msg_connect((self.satellites_ax25_deframer_0, 'out'), (self.satellites_telemetry_parser_0, 'in'))
-        self.connect((self.blocks_file_source_0, 0), (self.blocks_throttle_0, 0))
-        self.connect((self.blocks_throttle_0, 0), (self.freq_xlating_fir_filter_xxx_0, 0))
+        self.msg_connect((self.satellites_ax100_deframer_0, 'out'), (self.blocks_message_debug_0, 'print'))
+        self.msg_connect((self.satellites_ax100_deframer_0, 'out'), (self.blocks_message_debug_0, 'print_pdu'))
+        self.msg_connect((self.satellites_ax100_deframer_0, 'out'), (self.satellites_telemetry_parser_0, 'in'))
+        self.connect((self.blocks_throttle_0, 0), (self.blocks_file_sink_1, 0))
+        self.connect((self.blocks_throttle_0, 0), (self.digital_gfsk_demod_0, 0))
         self.connect((self.blocks_throttle_0, 0), (self.qtgui_freq_sink_x_0, 0))
+        self.connect((self.blocks_throttle_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
         self.connect((self.blocks_uchar_to_float_0, 0), (self.qtgui_time_sink_x_0, 0))
-        self.connect((self.blocks_uchar_to_float_0, 0), (self.satellites_ax25_deframer_0, 0))
+        self.connect((self.blocks_uchar_to_float_0, 0), (self.satellites_ax100_deframer_0, 0))
         self.connect((self.digital_gfsk_demod_0, 0), (self.blocks_uchar_to_float_0, 0))
-        self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.digital_gfsk_demod_0, 0))
-        self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
+        self.connect((self.osmosdr_source_0, 0), (self.blocks_throttle_0, 0))
 
 
     def closeEvent(self, event):
-        self.settings = Qt.QSettings("GNU Radio", "ax25wav_parser")
+        self.settings = Qt.QSettings("GNU Radio", "direct_parser")
         self.settings.setValue("geometry", self.saveGeometry())
         self.stop()
         self.wait()
 
         event.accept()
-
-    def get_transition_bw(self):
-        return self.transition_bw
-
-    def set_transition_bw(self, transition_bw):
-        self.transition_bw = transition_bw
-        self.freq_xlating_fir_filter_xxx_0.set_taps( firdes.complex_band_pass(1, self.samp_rate, -self.samp_rate/(2*self.decimation), self.samp_rate/(2*self.decimation), self.transition_bw))
 
     def get_samp_rate(self):
         return self.samp_rate
@@ -267,21 +271,15 @@ class ax25wav_parser(gr.top_block, Qt.QWidget):
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
         self.blocks_throttle_0.set_sample_rate(self.samp_rate)
-        self.freq_xlating_fir_filter_xxx_0.set_taps( firdes.complex_band_pass(1, self.samp_rate, -self.samp_rate/(2*self.decimation), self.samp_rate/(2*self.decimation), self.transition_bw))
+        self.osmosdr_source_0.set_sample_rate(self.samp_rate)
         self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
-
-    def get_decimation(self):
-        return self.decimation
-
-    def set_decimation(self, decimation):
-        self.decimation = decimation
-        self.freq_xlating_fir_filter_xxx_0.set_taps( firdes.complex_band_pass(1, self.samp_rate, -self.samp_rate/(2*self.decimation), self.samp_rate/(2*self.decimation), self.transition_bw))
+        self.qtgui_waterfall_sink_x_0.set_frequency_range(0, self.samp_rate)
 
 
 
 
-def main(top_block_cls=ax25wav_parser, options=None):
+def main(top_block_cls=direct_parser, options=None):
 
     if StrictVersion("4.5.0") <= StrictVersion(Qt.qVersion()) < StrictVersion("5.0.0"):
         style = gr.prefs().get_string('qtgui', 'style', 'raster')
