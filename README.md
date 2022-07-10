@@ -25,6 +25,8 @@ This folder contains files for reading Wav files.
 ### Examples
 Examples that Iris did not create are put here.
 
+If built from source and you are having issues with gr satellites blocks after updating, run the building and installing section of the documentation again.
+
 ## Test1SDR.grc
 Test1SDR.grc is the current working GNU Radio Companion file. 
 It relies on the [satellite decoder from GR Satellites](https://github.com/daniestevez/gr-satellites/tree/main/examples/satellite_decoder). 
