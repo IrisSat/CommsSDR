@@ -8,6 +8,7 @@ This repository contains the files for using GNU Radio. Note: recordings are on 
 ### GR Satellites
 [Install gr-satellites](https://github.com/daniestevez/gr-satellites). Using their [documentation](https://gr-satellites.readthedocs.io/en/latest/).
 
+If built from source and you are having issues with gr satellites blocks after updating, run the building and installing section of the documentation again.
 ### Osmocom
 [Install Osmocom](https://osmocom.org/) for getting the data from the HackRF to GNURadio.
 
@@ -24,8 +25,6 @@ This folder contains files for reading Wav files.
 
 ### Examples
 Examples that Iris did not create are put here.
-
-If built from source and you are having issues with gr satellites blocks after updating, run the building and installing section of the documentation again.
 
 ## Test1SDR.grc
 Test1SDR.grc is the current working GNU Radio Companion file. 
