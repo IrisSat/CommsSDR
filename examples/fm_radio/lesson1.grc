@@ -61,7 +61,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 96.5e6
+    value: 107.1M
   states:
     bus_sink: false
     bus_source: false
@@ -112,7 +112,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [152, 285]
+    coordinate: [176, 316.0]
     rotation: 0
     state: enabled
 - name: analog_wfm_rcv_0
@@ -182,7 +182,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [373, 260]
+    coordinate: [416, 272.0]
     rotation: 0
     state: enabled
 - name: low_pass_filter_0
