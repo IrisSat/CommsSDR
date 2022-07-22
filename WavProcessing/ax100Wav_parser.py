@@ -26,7 +26,7 @@ from gnuradio.filter import firdes
 import sip
 from gnuradio import blocks
 import pmt
-from gnuradio import filter
+from gnuradio import digital
 from gnuradio import gr
 from gnuradio.fft import window
 import sys
@@ -34,7 +34,8 @@ import signal
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
-import satellites.core
+import satellites.components.datasinks
+import satellites.components.deframers
 
 
 
@@ -77,20 +78,17 @@ class ax100Wav_parser(gr.top_block, Qt.QWidget):
         # Variables
         ##################################################
         self.samp_rate = samp_rate = 2.4e6
-        self.decimation = decimation = 20
-        self.transition_bw = transition_bw = 1000000
-        self.center_freq = center_freq = 1000000
-        self.bandwidth = bandwidth = samp_rate/decimation
 
         ##################################################
         # Blocks
         ##################################################
-        self.satellites_satellite_decoder_0 = satellites.core.gr_satellites_flowgraph(file = '/home/jonathan/CommsSDR/IRIS.yml', samp_rate = 48000, grc_block = True, iq = True, options = "")
+        self.satellites_telemetry_parser_0 = satellites.components.datasinks.telemetry_parser('gomx_1', file = '/home/jonathan/CommsSDR/output/output_AX100.txt', options="")
+        self.satellites_ax100_deframer_0 = satellites.components.deframers.ax100_deframer(mode = "ASM", scrambler = "CCSDS", syncword_threshold = 0, options="")
         self.qtgui_waterfall_sink_x_0 = qtgui.waterfall_sink_c(
             1024, #size
             window.WIN_BLACKMAN_hARRIS, #wintype
             0, #fc
-            bandwidth, #bw
+            samp_rate, #bw
             "", #name
             1, #number of inputs
             None # parent
@@ -121,11 +119,59 @@ class ax100Wav_parser(gr.top_block, Qt.QWidget):
         self._qtgui_waterfall_sink_x_0_win = sip.wrapinstance(self.qtgui_waterfall_sink_x_0.qwidget(), Qt.QWidget)
 
         self.top_layout.addWidget(self._qtgui_waterfall_sink_x_0_win)
+        self.qtgui_time_sink_x_0 = qtgui.time_sink_f(
+            1024, #size
+            samp_rate, #samp_rate
+            "", #name
+            1, #number of inputs
+            None # parent
+        )
+        self.qtgui_time_sink_x_0.set_update_time(0.10)
+        self.qtgui_time_sink_x_0.set_y_axis(-1, 1)
+
+        self.qtgui_time_sink_x_0.set_y_label('Amplitude', "")
+
+        self.qtgui_time_sink_x_0.enable_tags(True)
+        self.qtgui_time_sink_x_0.set_trigger_mode(qtgui.TRIG_MODE_FREE, qtgui.TRIG_SLOPE_POS, 0.0, 0, 0, "")
+        self.qtgui_time_sink_x_0.enable_autoscale(False)
+        self.qtgui_time_sink_x_0.enable_grid(False)
+        self.qtgui_time_sink_x_0.enable_axis_labels(True)
+        self.qtgui_time_sink_x_0.enable_control_panel(False)
+        self.qtgui_time_sink_x_0.enable_stem_plot(False)
+
+
+        labels = ['Signal 1', 'Signal 2', 'Signal 3', 'Signal 4', 'Signal 5',
+            'Signal 6', 'Signal 7', 'Signal 8', 'Signal 9', 'Signal 10']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ['blue', 'red', 'green', 'black', 'cyan',
+            'magenta', 'yellow', 'dark red', 'dark green', 'dark blue']
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+        styles = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        markers = [-1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1]
+
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_time_sink_x_0.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_time_sink_x_0.set_line_label(i, labels[i])
+            self.qtgui_time_sink_x_0.set_line_width(i, widths[i])
+            self.qtgui_time_sink_x_0.set_line_color(i, colors[i])
+            self.qtgui_time_sink_x_0.set_line_style(i, styles[i])
+            self.qtgui_time_sink_x_0.set_line_marker(i, markers[i])
+            self.qtgui_time_sink_x_0.set_line_alpha(i, alphas[i])
+
+        self._qtgui_time_sink_x_0_win = sip.wrapinstance(self.qtgui_time_sink_x_0.qwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_time_sink_x_0_win)
         self.qtgui_freq_sink_x_0 = qtgui.freq_sink_c(
             1024, #size
             window.WIN_BLACKMAN_hARRIS, #wintype
             0, #fc
-            bandwidth, #bw
+            samp_rate, #bw
             "", #name
             1,
             None # parent
@@ -163,7 +209,16 @@ class ax100Wav_parser(gr.top_block, Qt.QWidget):
 
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decimation, firdes.complex_band_pass(1, samp_rate, -samp_rate/(2*decimation), samp_rate/(2*decimation), transition_bw), 1000000, samp_rate)
+        self.digital_gfsk_demod_0 = digital.gfsk_demod(
+            samples_per_symbol=2,
+            sensitivity=1.0,
+            gain_mu=0.175,
+            mu=0.5,
+            omega_relative_limit=0.005,
+            freq_error=0.0,
+            verbose=False,
+            log=True)
+        self.blocks_uchar_to_float_0 = blocks.uchar_to_float()
         self.blocks_throttle_0 = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate,True)
         self.blocks_message_debug_0 = blocks.message_debug(True)
         self.blocks_file_source_0 = blocks.file_source(gr.sizeof_gr_complex*1, '/home/jonathan/CommsSDR/output/recordingASMGolay.wav', False, 0, 0)
@@ -173,12 +228,16 @@ class ax100Wav_parser(gr.top_block, Qt.QWidget):
         ##################################################
         # Connections
         ##################################################
-        self.msg_connect((self.satellites_satellite_decoder_0, 'out'), (self.blocks_message_debug_0, 'print_pdu'))
+        self.msg_connect((self.satellites_ax100_deframer_0, 'out'), (self.blocks_message_debug_0, 'print'))
+        self.msg_connect((self.satellites_ax100_deframer_0, 'out'), (self.blocks_message_debug_0, 'print_pdu'))
+        self.msg_connect((self.satellites_ax100_deframer_0, 'out'), (self.satellites_telemetry_parser_0, 'in'))
         self.connect((self.blocks_file_source_0, 0), (self.blocks_throttle_0, 0))
-        self.connect((self.blocks_throttle_0, 0), (self.freq_xlating_fir_filter_xxx_0, 0))
-        self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.qtgui_freq_sink_x_0, 0))
-        self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
-        self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.satellites_satellite_decoder_0, 0))
+        self.connect((self.blocks_throttle_0, 0), (self.digital_gfsk_demod_0, 0))
+        self.connect((self.blocks_throttle_0, 0), (self.qtgui_freq_sink_x_0, 0))
+        self.connect((self.blocks_throttle_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
+        self.connect((self.blocks_uchar_to_float_0, 0), (self.qtgui_time_sink_x_0, 0))
+        self.connect((self.blocks_uchar_to_float_0, 0), (self.satellites_ax100_deframer_0, 0))
+        self.connect((self.digital_gfsk_demod_0, 0), (self.blocks_uchar_to_float_0, 0))
 
 
     def closeEvent(self, event):
@@ -194,38 +253,10 @@ class ax100Wav_parser(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.set_bandwidth(self.samp_rate/self.decimation)
         self.blocks_throttle_0.set_sample_rate(self.samp_rate)
-        self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.complex_band_pass(1, self.samp_rate, -self.samp_rate/(2*self.decimation), self.samp_rate/(2*self.decimation), self.transition_bw))
-
-    def get_decimation(self):
-        return self.decimation
-
-    def set_decimation(self, decimation):
-        self.decimation = decimation
-        self.set_bandwidth(self.samp_rate/self.decimation)
-        self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.complex_band_pass(1, self.samp_rate, -self.samp_rate/(2*self.decimation), self.samp_rate/(2*self.decimation), self.transition_bw))
-
-    def get_transition_bw(self):
-        return self.transition_bw
-
-    def set_transition_bw(self, transition_bw):
-        self.transition_bw = transition_bw
-        self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.complex_band_pass(1, self.samp_rate, -self.samp_rate/(2*self.decimation), self.samp_rate/(2*self.decimation), self.transition_bw))
-
-    def get_center_freq(self):
-        return self.center_freq
-
-    def set_center_freq(self, center_freq):
-        self.center_freq = center_freq
-
-    def get_bandwidth(self):
-        return self.bandwidth
-
-    def set_bandwidth(self, bandwidth):
-        self.bandwidth = bandwidth
-        self.qtgui_freq_sink_x_0.set_frequency_range(0, self.bandwidth)
-        self.qtgui_waterfall_sink_x_0.set_frequency_range(0, self.bandwidth)
+        self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
+        self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
+        self.qtgui_waterfall_sink_x_0.set_frequency_range(0, self.samp_rate)
 
 
 
